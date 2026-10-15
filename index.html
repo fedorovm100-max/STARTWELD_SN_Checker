@@ -51,6 +51,15 @@ a.primary:focus-visible{outline:3px solid #3a75e4;outline-offset:2px}small{displ
   var btn = document.getElementById('open');
   btn.href = 'yandexnavi://build_route_on_map?lat_to=' + encodeURIComponent(lat) + '&lon_to=' + encodeURIComponent(lon);
   btn.style.display = 'block';
+  // Optional one-tap mode: preserve the working manual launch as a fallback.
+  if (q.get('auto') === '1') {
+    status.textContent = 'Пробуем открыть Яндекс Навигатор автоматически. Если переход заблокирован, нажмите жёлтую кнопку.';
+    try {
+      window.location.assign(btn.href);
+    } catch (e) {
+      status.textContent = 'Автоматический запуск недоступен. Нажмите жёлтую кнопку ниже.';
+    }
+  }
 }());
 </script>
 </body>
