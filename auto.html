@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>STARTWELD | Автоматический маршрут</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#17243a;background:#f3f5f8}
+*{box-sizing:border-box}body{margin:0;padding:18px}
+main{max-width:470px;margin:9vh auto;background:white;border-radius:18px;border:1px solid #e3e8ee;padding:25px;box-shadow:0 15px 40px #15213712}
+h1{font-size:24px;margin:0 0 14px}p{line-height:1.55;color:#536477}
+#launch{display:none;text-align:center;background:#f8cb13;color:#152137;border-radius:12px;padding:17px 12px;font-size:17px;font-weight:750;text-decoration:none;margin-top:22px}
+#destination{padding:13px;border-radius:10px;background:#f4f7fa;font-variant-numeric:tabular-nums;word-break:break-all}
+small{display:block;margin-top:22px;color:#68798c;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+<strong>STARTWELD / Логистика</strong>
+<h1>🧭 Яндекс Навигатор</h1>
+<p id="status">Открываем маршрут автоматически…</p>
+<div id="destination" hidden></div>
+<a id="launch" href="#">Открыть маршрут в Навигаторе</a>
+<small>Если телефон не разрешил автоматический запуск, нажмите жёлтую кнопку. Координаты проверяйте в Яндекс Навигаторе перед поездкой. Данные не сохраняются.</small>
+</main>
+<script>
+(function(){
+  'use strict';
+  var raw = location.hash.length > 1 ? location.hash.slice(1) : location.search.slice(1);
+  var q = new URLSearchParams(raw), sLat=q.get('lat'), sLon=q.get('lon');
+  var lat=Number(sLat),lon=Number(sLon);
+  var ok = sLat!==null && sLon!==null && sLat.trim()!=='' && sLon.trim()!=='' &&
+      Number.isFinite(lat) && Number.isFinite(lon) && lat>=-90 && lat<=90 && lon>=-180 && lon<=180;
+  var status=document.getElementById('status'), btn=document.getElementById('launch');
+  if(!ok){status.textContent='Нет корректных координат. Вернитесь в MAX и откройте ссылку из поручения.';return;}
+  lat=lat.toFixed(7);lon=lon.toFixed(7);
+  var uri='yandexnavi://build_route_on_map?lat_to='+encodeURIComponent(lat)+'&lon_to='+encodeURIComponent(lon);
+  btn.href=uri;btn.style.display='block';
+  var dest=document.getElementById('destination');
+  dest.textContent='Точка назначения: '+lat+', '+lon;dest.hidden=false;
+  status.textContent='Если Навигатор не открылся автоматически, нажмите кнопку ниже.';
+  // Experimental: mobile browsers may reject this navigation without a user gesture.
+  try{window.location.assign(uri);}catch(e){/* Manual link remains available. */}
+}());
+</script>
+</body>
+</html>
