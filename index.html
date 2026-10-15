@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<title>STARTWELD | Маршрут для водителя</title>
+<style>
+:root{color-scheme:light;--ink:#162133;--muted:#59687b;--yellow:#f5c400;--bg:#f3f5f8}
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:16px;min-height:100vh}
+main{max-width:490px;margin:6vh auto;background:#fff;border:1px solid #e0e5ec;border-radius:20px;padding:27px 23px;box-shadow:0 14px 40px #14203117}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:850;letter-spacing:.025em}.logo{height:36px;width:36px;border-radius:9px;background:var(--ink);color:var(--yellow);display:grid;place-items:center;font-size:19px}
+h1{font-size:25px;line-height:1.2;margin:24px 0 10px}p{line-height:1.55;margin:12px 0;color:var(--muted)}
+.route{margin-top:18px;background:#f7f9fc;border:1px solid #e4eaf2;border-radius:12px;padding:14px}
+.route span{display:block;font-size:12px;color:var(--muted)}.route strong{display:block;margin-top:4px;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+a.primary{display:none;margin-top:20px;padding:17px 10px;border-radius:12px;background:var(--yellow);color:#172033;text-align:center;font-size:17px;font-weight:800;text-decoration:none}
+a.primary:focus-visible{outline:3px solid #3a75e4;outline-offset:2px}small{display:block;margin-top:18px;color:#788494;line-height:1.6}
+.error{color:#a22a29;background:#fff2f1;border:1px solid #f1c6c2;border-radius:10px;padding:14px;margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+<div class="brand"><div class="logo">SW</div> STARTWELD <span style="font-weight:400;color:#8b96a6">/ Логистика</span></div>
+<h1>Маршрут в Яндекс Навигаторе</h1>
+<p id="status">Проверяем пункт назначения…</p>
+<div id="route" class="route" hidden><span>Конечная точка</span><strong id="coords"></strong></div>
+<a id="open" class="primary" href="#" rel="noreferrer">🧭 Построить маршрут</a>
+<small>Нажмите кнопку — Навигатор предложит маршрут от вашего текущего местоположения. Перед поездкой убедитесь, что точка назначения указана правильно. Страница не запрашивает телефон, учётную запись и не сохраняет данные.</small>
+</main>
+<script>
+(function () {
+  'use strict';
+  // Fragment coordinates are never included in the request to GitHub Pages.
+  var raw = location.hash.length > 1 ? location.hash.slice(1) : location.search.slice(1);
+  var q = new URLSearchParams(raw);
+  var la = q.get('lat'), lo = q.get('lon');
+  var a = Number(la), b = Number(lo);
+  var ok = la !== null && lo !== null && la.trim() !== '' && lo.trim() !== '' &&
+    Number.isFinite(a) && Number.isFinite(b) && a >= -90 && a <= 90 && b >= -180 && b <= 180;
+  var status = document.getElementById('status');
+  if (!ok) {
+    status.textContent = 'Не удалось получить точку назначения. Вернитесь в MAX и снова нажмите кнопку «Маршрут» в свежей карточке поручения.';
+    status.className = 'error';
+    return;
+  }
+  var lat = a.toFixed(7), lon = b.toFixed(7);
+  document.getElementById('coords').textContent = lat + ', ' + lon;
+  document.getElementById('route').hidden = false;
+  status.textContent = 'Адрес найден. Нажмите кнопку, чтобы сразу передать пункт назначения в Яндекс Навигатор.';
+  var btn = document.getElementById('open');
+  btn.href = 'yandexnavi://build_route_on_map?lat_to=' + encodeURIComponent(lat) + '&lon_to=' + encodeURIComponent(lon);
+  btn.style.display = 'block';
+}());
+</script>
+</body>
+</html>
