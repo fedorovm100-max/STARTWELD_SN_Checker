@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
+import android.media.MediaScannerConnection;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -42,8 +43,8 @@ public class MainActivity extends Activity {
     private static final char GS = 29;
     private static final String INTERNAL_KI = "chz_ki.txt";
     private static final String INTERNAL_RAW = "chz_raw.txt";
-    private static final String XLSX_NAME = "ЧестныйЗнак_списание.xlsx";
-    private static final String RAW_NAME = "ЧестныйЗнак_сканы.txt";
+    private static final String XLSX_NAME = "CHZ_spisanie.xlsx";
+    private static final String RAW_NAME = "CHZ_scans.txt";
 
     private final Handler handler = new Handler();
     private final LinkedHashSet<String> codes = new LinkedHashSet<String>();
@@ -52,6 +53,7 @@ public class MainActivity extends Activity {
 
     private TextView countText;
     private TextView statusText;
+    private TextView pathText;
     private EditText scanInput;
     private ListView listView;
     private ArrayAdapter<String> adapter;
@@ -147,7 +149,7 @@ public class MainActivity extends Activity {
         export.setText("Обновить файл");
         export.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                if (exportFiles()) setStatus("Файлы обновлены в DCIM", 2);
+                if (exportFiles()) setStatus("Файлы обновлены. Путь показан внизу.", 2);
                 focusScanner();
             }
         });
@@ -181,12 +183,12 @@ public class MainActivity extends Activity {
         listView.setVisibility(View.GONE);
         root.addView(listView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        TextView path = new TextView(this);
-        path.setText("Файл для загрузки: DCIM/" + XLSX_NAME + "\nРезерв: DCIM/" + RAW_NAME);
-        path.setTextSize(12);
-        path.setTextColor(Color.DKGRAY);
-        path.setPadding(0, dp(8), 0, 0);
-        root.addView(path);
+        pathText = new TextView(this);
+        pathText.setText("Определяю путь к файлу...");
+        pathText.setTextSize(12);
+        pathText.setTextColor(Color.DKGRAY);
+        pathText.setPadding(0, dp(8), 0, 0);
+        root.addView(pathText);
 
         setContentView(root);
 
@@ -536,7 +538,30 @@ public class MainActivity extends Activity {
     private boolean exportFiles() {
         boolean a = exportXlsx();
         boolean b = exportRawTxt();
+        updatePathText();
         return a && b;
+    }
+
+    private void updatePathText() {
+        if (pathText == null) return;
+        File d = dcim();
+        File x = new File(d, XLSX_NAME);
+        File t = new File(d, RAW_NAME);
+        pathText.setText(
+            "XLSX: " + x.getAbsolutePath() + (x.exists() ? "  [" + x.length() + " байт]" : "  [НЕТ]") +
+            "\nTXT: " + t.getAbsolutePath() + (t.exists() ? "  [" + t.length() + " байт]" : "  [НЕТ]")
+        );
+    }
+
+    private void scanMedia(File file, String mime) {
+        try {
+            MediaScannerConnection.scanFile(
+                getApplicationContext(),
+                new String[]{ file.getAbsolutePath() },
+                new String[]{ mime },
+                null
+            );
+        } catch (Throwable ignored) {}
     }
 
     private File dcim() {
@@ -555,7 +580,8 @@ public class MainActivity extends Activity {
             }
             w.flush();
             w.close();
-            return true;
+            scanMedia(f, "text/plain");
+            return f.exists();
         } catch (Throwable e) {
             return false;
         }
@@ -607,7 +633,8 @@ public class MainActivity extends Activity {
 
             if (target.exists() && !target.delete()) return false;
             if (!temp.renameTo(target)) return false;
-            return true;
+            scanMedia(target, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return target.exists() && target.length() > 0;
         } catch (Throwable e) {
             try { temp.delete(); } catch (Throwable ignored) {}
             return false;
