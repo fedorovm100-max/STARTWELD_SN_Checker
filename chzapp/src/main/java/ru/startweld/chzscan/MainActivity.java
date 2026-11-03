@@ -230,7 +230,7 @@ public class MainActivity extends Activity {
             appendRawBackup(raw);
             rewriteInternal();
             exportRawTxt();
-            setStatus("НЕ УДАЛОСЬ ВЫДЕЛИТЬ КИ. Полный скан сохранён в резервный TXT.", -1);
+            setStatus("НЕ УДАЛОСЬ ВЫДЕЛИТЬ КИ. Скан: " + preview(raw), -1);
             vibrate(180L);
             clearInput();
             return;
@@ -272,9 +272,11 @@ public class MainActivity extends Activity {
         String s = trimScannerEnding(raw);
         int p = findAi01(s);
         if (p < 0) return null;
+
         int gtinStart = p + 2;
         int gtinEnd = gtinStart + 14;
         if (gtinEnd + 2 > s.length()) return null;
+
         for (int i = gtinStart; i < gtinEnd; i++) {
             char c = s.charAt(i);
             if (c < '0' || c > '9') return null;
@@ -284,18 +286,72 @@ public class MainActivity extends Activity {
         int serialStart = gtinEnd + 2;
         if (serialStart >= s.length()) return null;
 
+        // Correct GS1 stream: KI ends at ASCII 29 before AI 91/92/93.
         int gs = s.indexOf(GS, serialStart);
         if (gs > serialStart) {
             return s.substring(p, gs);
         }
 
-        // If there is no GS separator, accept only a string that appears to contain KI only.
-        // Full codes with an ambiguous crypto tail are kept in the raw backup instead of risking a bad write-off.
+        // Some TSD keyboard-wedge modes silently remove ASCII 29.
+        // Then detect the crypto tail from the GS1 AI sequence and keep only 01+GTIN+21+serial.
         String candidate = s.substring(p);
         if (containsControl(candidate)) return null;
-        if (looksLikeCryptoTailWithoutSeparator(candidate, serialStart - p)) return null;
-        if (candidate.length() < 21 || candidate.length() > 38) return null;
-        return candidate;
+
+        int crypto = findCryptoStartWithoutGs(candidate, serialStart - p);
+        if (crypto > serialStart - p) {
+            return candidate.substring(0, crypto);
+        }
+
+        // KI-only scans are also valid. Official structures commonly have 24, 25 or 31 characters.
+        int[] knownKiLengths = new int[]{31, 25, 24};
+        for (int len : knownKiLengths) {
+            if (candidate.length() == len) return candidate;
+        }
+
+        return null;
+    }
+
+    private int findCryptoStartWithoutGs(String candidate, int serialOffset) {
+        int[] knownKiLengths = new int[]{31, 25, 24};
+
+        // Prefer exact official KI boundaries; this avoids confusing "91" inside a serial number with AI 91.
+        for (int len : knownKiLengths) {
+            if (candidate.length() >= len + 8 &&
+                    startsAt(candidate, len, "91") &&
+                    startsAt(candidate, len + 6, "92")) {
+                return len;
+            }
+            if (candidate.length() == len + 6 && startsAt(candidate, len, "93")) {
+                return len;
+            }
+        }
+
+        // Fallback for other product groups: AI 91 has exactly 4 characters before AI 92.
+        int min = serialOffset + 4;
+        for (int i = min; i + 8 <= candidate.length(); i++) {
+            if (startsAt(candidate, i, "91") && startsAt(candidate, i + 6, "92")) {
+                return i;
+            }
+        }
+
+        // Short crypto form: AI 93 + 4 verification characters at the end.
+        for (int i = min; i + 6 == candidate.length(); i++) {
+            if (startsAt(candidate, i, "93")) return i;
+        }
+
+        return -1;
+    }
+
+    private boolean startsAt(String s, int index, String token) {
+        if (index < 0 || index + token.length() > s.length()) return false;
+        return s.regionMatches(index, token, 0, token.length());
+    }
+
+    private String preview(String raw) {
+        String s = printable(raw);
+        s = s.replace("\r", " ").replace("\n", " ");
+        if (s.length() > 55) return s.substring(0, 55) + "…";
+        return s;
     }
 
     private int findAi01(String s) {
@@ -316,17 +372,6 @@ public class MainActivity extends Activity {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             if (c < 32 || c == 127) return true;
-        }
-        return false;
-    }
-
-    private boolean looksLikeCryptoTailWithoutSeparator(String candidate, int serialOffset) {
-        int min = serialOffset + 5;
-        for (int i = min; i + 2 < candidate.length(); i++) {
-            if (candidate.charAt(i) == '9') {
-                char n = candidate.charAt(i + 1);
-                if ((n == '1' || n == '2' || n == '3') && candidate.length() - i >= 6) return true;
-            }
         }
         return false;
     }
