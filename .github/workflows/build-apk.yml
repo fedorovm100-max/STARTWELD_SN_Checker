@@ -29,12 +29,21 @@ jobs:
           gradle-version: '8.2'
       - name: Verify serial list
         run: python3 verify_serials.py
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk STARTWELD_SN_Checker.apk
+      - name: Build SN checker APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Build Honest Sign scanner APK
+        run: gradle --no-daemon :chzapp:assembleDebug
+      - name: Rename APK files
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk STARTWELD_SN_Checker.apk
+          cp chzapp/build/outputs/apk/debug/chzapp-debug.apk STARTWELD_CHZ_Scanner.apk
       - uses: actions/upload-artifact@v4
         with:
           name: STARTWELD_SN_Checker_APK
           path: STARTWELD_SN_Checker.apk
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: STARTWELD_CHZ_Scanner_APK
+          path: STARTWELD_CHZ_Scanner.apk
           retention-days: 30
